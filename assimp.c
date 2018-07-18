@@ -34,7 +34,7 @@ static void load_comp_children(
 );
 
 
-void load_material(entity_t entity, const struct aiMesh *mesh,
+static void load_material(entity_t entity, const struct aiMesh *mesh,
 		const struct aiScene *scene)
 {
 	if(mesh->mMaterialIndex >= scene->mNumMaterials) return;
@@ -229,7 +229,7 @@ static void load_comp_children(entity_t entity, const struct aiScene *scene,
 	}
 }
 
-void load_node(entity_t entity, const struct aiScene *scene,
+static void load_node(entity_t entity, const struct aiScene *scene,
 		const struct aiNode *anode, int depth)
 {
 	int inherit_type = 0;
@@ -295,7 +295,7 @@ static void load_node_children(entity_t entity, const struct aiScene *scene,
 	}
 }
 
-void load_timelines(entity_t entity, const struct aiScene *scene)
+static void load_timelines(entity_t entity, const struct aiScene *scene)
 {
 	c_node_t *root = c_node(&entity);
 	int a;
@@ -421,7 +421,8 @@ static int c_assimp_load(c_assimp_t *self,
 	}
 
 	aiReleaseImport(scene);
-    return HANDLED;
+    return STOP;
+    /* return HANDLED; */
 }
 
 REG()
