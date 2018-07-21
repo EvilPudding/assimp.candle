@@ -48,7 +48,7 @@ init:
 
 clean:
 	-rm -r $(DIR)
-	$(MAKE) -C nativefiledialog/build/gmake_linux clean
+	-$(MAKE) -C nativefiledialog/build/gmake_linux clean
 
 # vim:ft=make
 #

@@ -18,8 +18,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* #define OBJ 1199244993 */
+/* #define PLY 1842197252 */
+/* #define GLTF 1170648920 */
+/* #define BIN 1516167604 */
+/* #define DAE 1928915418 */
+/* #define FBX 804230617 */
+
 c_assimp_t *c_assimp_new()
 {
+	/* sauces_loader(ref("obj"), NULL); */
+		/* sauces_loader(ref("ply"), NULL); */
+	sauces_loader(ref("fbx"), NULL);
+	sauces_loader(ref("dae"), NULL);
+	sauces_loader(ref("bin"), NULL);
+	sauces_loader(ref("gltf"), NULL);
+
 	c_assimp_t *self = component_new("assimp");
 	return self;
 }
@@ -51,7 +65,8 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		strncpy(buffer, name.data, sizeof(buffer));
 		to_lower_case(buffer);
 	}
-	mat_t *material = sauces_mat(buffer);
+	strcat(buffer, ".mat");
+	mat_t *material = sauces(buffer);
 	if(!material)
 	{
 		material = mat_new(buffer);
@@ -69,7 +84,7 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		{
 			strncpy(buffer, path.data, sizeof(buffer));
 			char *fname = filter_sauce_name(buffer);
-			texture_t *texture = sauces_tex(fname);
+			texture_t *texture = sauces(fname);
 			if(texture)
 			{
 				material->normal.texture = texture;
@@ -83,7 +98,7 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		{
 			strncpy(buffer, path.data, sizeof(buffer));
 			char *fname = filter_sauce_name(buffer);
-			texture_t *texture = sauces_tex(fname);
+			texture_t *texture = sauces(fname);
 			if(texture)
 			{
 				material->albedo.texture = texture;
@@ -98,7 +113,7 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		{
 			strncpy(buffer, path.data, sizeof(buffer));
 			char *fname = filter_sauce_name(buffer);
-			texture_t *texture = sauces_tex(fname);
+			texture_t *texture = sauces(fname);
 			if(texture)
 			{
 				material->roughness.texture = texture;
@@ -120,7 +135,7 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		}
 
 		/* int j; for(j = 0; j < mat->mNumProperties; j++) { printf("%s\n", mat->mProperties[j]->mKey.data); } */
-		sauces_register_mat(material);
+		sauces_register(material->name, NULL, material);
 	}
 	mc->layers[0].mat = material;
 }
@@ -144,7 +159,7 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 	if(!mc && anode->mNumMeshes)
 	{
 		entity_add_component(entity, c_model_new(mesh_new(),
-					sauces_mat("_default"), 1, 1));
+					sauces("_default.mat"), 1, 1));
 		mc = c_model(&entity);
 	}
 
@@ -307,8 +322,8 @@ static void load_timelines(entity_t entity, const struct aiScene *scene)
 		for(n = 0; n < anim->mNumChannels; n++)
 		{
 			int k;
-			const struct aiNodeAnim *nodeAnim = anim->mChannels[n];
-			const char *name = nodeAnim->mNodeName.data;
+			const struct aiNodeAnim *node_anim = anim->mChannels[n];
+			const char *name = node_anim->mNodeName.data;
 			if(!name) continue;
 			entity_t ent = c_node_get_by_name(root, ref(name));
 			if(!ent) continue;
@@ -324,27 +339,27 @@ static void load_timelines(entity_t entity, const struct aiScene *scene)
 			if(!tc->ticks_per_sec) tc->ticks_per_sec = 30;
 
 			c_timeline_clear(tc);
-			vector_alloc(tc->keys_pos, nodeAnim->mNumPositionKeys);
-			vector_alloc(tc->keys_rot, nodeAnim->mNumRotationKeys);
-			vector_alloc(tc->keys_scale, nodeAnim->mNumScalingKeys);
+			vector_alloc(tc->keys_pos, node_anim->mNumPositionKeys);
+			vector_alloc(tc->keys_rot, node_anim->mNumRotationKeys);
+			vector_alloc(tc->keys_scale, node_anim->mNumScalingKeys);
 
-			for(k = 0; k < nodeAnim->mNumScalingKeys; k++)
+			for(k = 0; k < node_anim->mNumScalingKeys; k++)
 			{
-				const struct aiVectorKey *key = &nodeAnim->mScalingKeys[k];
+				const struct aiVectorKey *key = &node_anim->mScalingKeys[k];
 				vec3_t vec = vec3(key->mValue.x, key->mValue.y, key->mValue.z);
 				c_timeline_insert_scale(tc, vec, key->mTime);
 			}
-			for(k = 0; k < nodeAnim->mNumRotationKeys; k++)
+			for(k = 0; k < node_anim->mNumRotationKeys; k++)
 			{
-				const struct aiQuatKey *key = &nodeAnim->mRotationKeys[k];
+				const struct aiQuatKey *key = &node_anim->mRotationKeys[k];
 				vec4_t quat = vec4(key->mValue.x, key->mValue.y, key->mValue.z,
 						key->mValue.w);
 
 				c_timeline_insert_rot(tc, quat, key->mTime);
 			}
-			for(k = 0; k < nodeAnim->mNumPositionKeys; k++)
+			for(k = 0; k < node_anim->mNumPositionKeys; k++)
 			{
-				const struct aiVectorKey *key = &nodeAnim->mPositionKeys[k];
+				const struct aiVectorKey *key = &node_anim->mPositionKeys[k];
 				vec3_t vec = vec3(key->mValue.x, key->mValue.y, key->mValue.z);
 				c_timeline_insert_pos(tc, vec, key->mTime);
 			}
@@ -358,7 +373,7 @@ static int c_assimp_load(c_assimp_t *self,
 		struct load_signal *info, entity_t *target)
 {
 	int i;
-	resource_t *sauce = sauces(meshes, info->filename);
+	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), info->filename);
 	if(!sauce) return STOP;
 
 	const struct aiScene *scene = aiImportFile(sauce->path,
