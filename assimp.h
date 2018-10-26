@@ -1,7 +1,7 @@
 #ifndef CAN_ASSIMP_H
 #define CAN_ASSIMP_H
 
-#include <ecm.h>
+#include <ecs/ecm.h>
 
 typedef float(*collider_cb)(c_t *self, vec3_t pos);
 typedef float(*velocity_cb)(c_t *self, vec3_t pos);

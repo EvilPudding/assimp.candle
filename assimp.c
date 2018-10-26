@@ -28,6 +28,7 @@
 c_assimp_t *c_assimp_new()
 {
 	/* sauces_loader(ref("obj"), NULL); */
+	/* sauces_loader(ref("mtl"), NULL); */
 		/* sauces_loader(ref("ply"), NULL); */
 	sauces_loader(ref("fbx"), NULL);
 	sauces_loader(ref("dae"), NULL);
@@ -48,14 +49,10 @@ static void load_comp_children(
 );
 
 
-static void load_material(entity_t entity, const struct aiMesh *mesh,
+static mat_t *load_material(const struct aiMaterial *mat,
 		const struct aiScene *scene)
 {
-	if(mesh->mMaterialIndex >= scene->mNumMaterials) return;
-	c_model_t *mc = c_model(&entity);
 	char buffer[512] = "unnamed";
-	const struct aiMaterial *mat =
-		scene->mMaterials[mesh->mMaterialIndex];
 	struct aiString name;
 
 	struct aiString path;
@@ -137,7 +134,7 @@ static void load_material(entity_t entity, const struct aiMesh *mesh,
 		/* int j; for(j = 0; j < mat->mNumProperties; j++) { printf("%s\n", mat->mProperties[j]->mKey.data); } */
 		sauces_register(material->name, NULL, material);
 	}
-	mc->layers[0].mat = material;
+	return material;
 }
 
 static inline mat4_t mat4_from_ai(const struct aiMatrix4x4 m)
@@ -218,7 +215,10 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 		}
 		last_vertex += mesh->mNumVertices;
 
-		load_material(entity, mesh, scene);
+		if(mesh->mMaterialIndex >= scene->mNumMaterials) continue;
+		const struct aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
+		mat_t *material = load_material(mat, scene);
+		mc->layers[0].mat = material;
 	}
 
 	load_comp_children(entity, scene, anode, root);
@@ -404,6 +404,16 @@ static int c_assimp_load(c_assimp_t *self,
 		load_comp(*target, scene, scene->mRootNode, root);
 	}
 	load_timelines(*target, scene);
+
+	if(anim_only)
+	{
+		printf("Loading materials\n");
+		for(i = 0; i < scene->mNumMaterials; i++)
+		{
+			const struct aiMaterial *mat = scene->mMaterials[i];
+			load_material(mat, scene);
+		}
+	}
 
 	for(i = 0; i < scene->mNumLights; i++)
 	{
