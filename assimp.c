@@ -85,8 +85,8 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			if(texture)
 			{
 				material->normal.texture = texture;
-				material->normal.texture_blend = 1.0f - blend;
-				material->normal.texture_scale = 1.0f;
+				material->normal.blend = 1.0f - blend;
+				material->normal.scale = 1.0f;
 			}
 		}
 		if(aiGetMaterialTexture( mat, aiTextureType_DIFFUSE, 0, &path,
@@ -99,8 +99,8 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			if(texture)
 			{
 				material->albedo.texture = texture;
-				material->albedo.texture_blend = 1.0f - blend;
-				material->albedo.texture_scale = 1.0f;
+				material->albedo.blend = 1.0f - blend;
+				material->albedo.scale = 1.0f;
 			}
 		}
 
@@ -114,8 +114,8 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			if(texture)
 			{
 				material->roughness.texture = texture;
-				material->roughness.texture_blend = 1.0f - blend;
-				material->roughness.texture_scale = 1.0f;
+				material->roughness.blend = 1.0f - blend;
+				material->roughness.scale = 1.0f;
 			}
 		}
 
@@ -176,7 +176,7 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 				entity_add_component(entity, c_skin_new());
 				skin = c_skin(&entity);
 			}
-			c_skin_vert_prealloc(skin, vector_count(mc->mesh->verts));
+			skin_vert_prealloc(&skin->info, vector_count(mc->mesh->verts));
 
 			for(b = 0; b < mesh->mNumBones; b++)
 			{
@@ -184,12 +184,12 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 				const struct aiBone* abone = mesh->mBones[b];
 				entity_t bone = c_node_get_by_name(root, ref(abone->mName.data));
 				if(!bone) continue;
-				int bone_index = skin->bones_num;
+				int bone_index = skin->info.bones_num;
 
-				skin->bones[bone_index] = bone;
+				skin->info.bones[bone_index] = bone;
 				mat4_t offset = mat4_from_ai(abone->mOffsetMatrix);
-				skin->off[bone_index] = offset;
-				skin->bones_num++;
+				skin->info.off[bone_index] = offset;
+				skin->info.bones_num++;
 
 				if(!c_bone(&bone))
 				{
@@ -202,10 +202,10 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 					int real_id = (vweight->mVertexId + last_vertex);
 					for(i = 0; i < 4; i++)
 					{
-						if(skin->wei[real_id]._[i] == 0.0f)
+						if(skin->info.wei[real_id]._[i] == 0.0f)
 						{
-							skin->wei[real_id]._[i] = vweight->mWeight;
-							skin->bid[real_id]._[i] = bone_index;
+							skin->info.wei[real_id]._[i] = vweight->mWeight;
+							skin->info.bid[real_id]._[i] = bone_index;
 							break;
 						}
 					}
@@ -218,7 +218,7 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 		if(mesh->mMaterialIndex >= scene->mNumMaterials) continue;
 		const struct aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
 		mat_t *material = load_material(mat, scene);
-		mc->layers[0].mat = material;
+		c_model_set_mat(mc, material);
 	}
 
 	load_comp_children(entity, scene, anode, root);
