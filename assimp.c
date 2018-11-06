@@ -176,36 +176,35 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 				entity_add_component(entity, c_skin_new());
 				skin = c_skin(&entity);
 			}
-			skin_vert_prealloc(&skin->info, vector_count(mc->mesh->verts));
 
 			for(b = 0; b < mesh->mNumBones; b++)
 			{
 				int w;
 				const struct aiBone* abone = mesh->mBones[b];
 				entity_t bone = c_node_get_by_name(root, ref(abone->mName.data));
-				if(!bone) continue;
+				if(!bone || c_bone(&bone)) continue;
 				int bone_index = skin->info.bones_num;
 
 				skin->info.bones[bone_index] = bone;
-				mat4_t offset = mat4_from_ai(abone->mOffsetMatrix);
-				skin->info.off[bone_index] = offset;
 				skin->info.bones_num++;
 
-				if(!c_bone(&bone))
-				{
-					entity_add_component(bone, c_bone_new());
-				}
+				entity_add_component(bone, c_bone_new(entity,
+							mat4_from_ai(abone->mOffsetMatrix)));
+
 				for(w = 0; w < abone->mNumWeights; w++)
 				{
-					int i;
+					mc->mesh->has_skin = 1;
 					const struct aiVertexWeight *vweight = &abone->mWeights[w];
 					int real_id = (vweight->mVertexId + last_vertex);
+					vertex_t *vert = vector_get(mc->mesh->verts, real_id);
+
+					int i;
 					for(i = 0; i < 4; i++)
 					{
-						if(skin->info.wei[real_id]._[i] == 0.0f)
+						if(vert->wei._[i] == 0.0f)
 						{
-							skin->info.wei[real_id]._[i] = vweight->mWeight;
-							skin->info.bid[real_id]._[i] = bone_index;
+							vert->wei._[i] = vweight->mWeight;
+							vert->bid._[i] = bone_index;
 							break;
 						}
 					}
@@ -277,12 +276,11 @@ static void load_node(entity_t entity, const struct aiScene *scene,
 			}
 		}
 	}
-
-	if(inherit_type)
-	{
-		c_spacial_set_model(spacial, mat4_from_ai(anode->mParent->mTransformation));
-	}
-	else
+	/* if(inherit_type) */
+	/* { */
+		/* c_spacial_set_model(spacial, mat4_from_ai(anode->mParent->mTransformation)); */
+	/* } */
+	/* else */
 	{
 		c_spacial_set_model(spacial, mat4_from_ai(anode->mTransformation));
 	}
