@@ -39,6 +39,76 @@ c_assimp_t *c_assimp_new()
 	return self;
 }
 
+void mesh_load_scene(mesh_t *self, const void *grp)
+{
+	mesh_lock(self);
+	const struct aiMesh *group = grp;
+	strcpy(self->name, "load_result");
+	/* self->has_texcoords = 0; */
+
+	int offset = vector_count(self->verts);
+	int j;
+
+	if(!group->mTextureCoords[0])
+	{
+		self->has_texcoords = 0;
+	}
+	/* for(j = 0; j < AI_MAX_NUMBER_OF_TEXTURECOORDS; j++) */
+	/* { */
+		/* printf("j %d = %u\n", j, group->mNumUVComponents[j]); */
+	/* } */
+
+
+	for(j = 0; j < group->mNumVertices; j++)
+	{
+		mesh_add_vert(self, VEC3(_vec3(group->mVertices[j])));
+	}
+	struct aiVector3D *normals = group->mNormals;
+	normals = NULL;
+	struct aiVector3D *texcoor = group->mTextureCoords[0];
+	for(j = 0; j < group->mNumFaces; j++)
+	{
+		const struct aiFace *face = &group->mFaces[j];
+		unsigned int *indices = face->mIndices;
+
+		if(face->mNumIndices == 3)
+		{
+			int i0 = indices[0] + offset;
+			int i1 = indices[1] + offset;
+			int i2 = indices[2] + offset;
+			mesh_add_triangle(self,
+					i0, normals?vec3(_vec3(normals[i0])):Z3,
+					texcoor?vec2(_vec2(texcoor[i0])):Z2,
+
+					i1, normals?vec3(_vec3(normals[i1])):Z3,
+					texcoor?vec2(_vec2(texcoor[i1])):Z2,
+
+					i2, normals?vec3(_vec3(normals[i2])):Z3,
+					texcoor?vec2(_vec2(texcoor[i2])):Z2);
+		}
+		else if(face->mNumIndices == 4)
+		{
+			int i0 = indices[0] + offset;
+			int i1 = indices[1] + offset;
+			int i2 = indices[2] + offset;
+			int i3 = indices[3] + offset;
+			mesh_add_quad(self,
+					i0, normals?vec3(_vec3(normals[i0])):Z3,
+					texcoor?vec2(_vec2(texcoor[i0])):Z2,
+
+					i1, normals?vec3(_vec3(normals[i1])):Z3,
+					texcoor?vec2(_vec2(texcoor[i1])):Z2,
+
+					i2, normals?vec3(_vec3(normals[i2])):Z3,
+					texcoor?vec2(_vec2(texcoor[i2])):Z2,
+
+					i3, normals?vec3(_vec3(normals[i3])):Z3,
+					texcoor?vec2(_vec2(texcoor[i3])):Z2);
+		}
+	}
+
+	mesh_unlock(self);
+}
 static void load_node_children(entity_t entity, const struct aiScene *scene,
 		const struct aiNode *anode, int depth);
 static void load_comp_children(
@@ -66,7 +136,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 	mat_t *material = sauces(buffer);
 	if(!material)
 	{
-		material = mat_new(buffer);
+		material = mat_new(buffer, "default");
 
 		enum aiTextureMapping mapping;
 		unsigned int uvi = 0;
@@ -84,9 +154,8 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			texture_t *texture = sauces(fname);
 			if(texture)
 			{
-				material->normal.texture = texture;
-				material->normal.blend = 1.0f - blend;
-				material->normal.scale = 1.0f;
+				mat1t(material, ref("normal.texture"), texture);
+				mat1f(material, ref("normal.blend"), 1.0f - blend);
 			}
 		}
 		if(aiGetMaterialTexture( mat, aiTextureType_DIFFUSE, 0, &path,
@@ -98,9 +167,22 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			texture_t *texture = sauces(fname);
 			if(texture)
 			{
-				material->albedo.texture = texture;
-				material->albedo.blend = 1.0f - blend;
-				material->albedo.scale = 1.0f;
+				mat1t(material, ref("albedo.texture"), texture);
+				mat1f(material, ref("albedo.blend"), 1.0f - blend);
+			}
+		}
+
+		if(aiGetMaterialTexture( mat, aiTextureType_AMBIENT, 0, &path,
+					&mapping, &uvi, &blend, &op, &mode, &flags) ==
+				aiReturn_SUCCESS)
+		{
+			strncpy(buffer, path.data, sizeof(buffer));
+			char *fname = filter_sauce_name(buffer);
+			texture_t *texture = sauces(fname);
+			if(texture)
+			{
+				mat1t(material, ref("metalness.texture"), texture);
+				mat1f(material, ref("metalness.blend"), 1.0f - blend);
 			}
 		}
 
@@ -113,25 +195,28 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			texture_t *texture = sauces(fname);
 			if(texture)
 			{
-				material->roughness.texture = texture;
-				material->roughness.blend = 1.0f - blend;
-				material->roughness.scale = 1.0f;
+				mat1t(material, ref("roughness.texture"), texture);
+				mat1f(material, ref("roughness.blend"), 1.0f - blend);
 			}
 		}
 
-		vec4_t color = vec4(0,0,0,1);
+		vec4_t color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_TRANSPARENT,
 					(void*)&color))
 		{
-			material->transparency.color = vec4(1-color.x, 1-color.y, 1-color.z, 1-color.a);
+			mat4f(material, ref("absorve.color"),
+			      vec4(1.0f - color.x, 1.0f - color.y,
+			           1.0f - color.z, 1.0f - color.a));
 		}
 		if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE,
 					(void*)&color))
 		{
-			material->albedo.color = color;
+			mat4f(material, ref("albedo.color"), color);
 		}
 
-		/* int j; for(j = 0; j < mat->mNumProperties; j++) { printf("%s\n", mat->mProperties[j]->mKey.data); } */
+/* 		int j; for(j = 0; j < mat->mNumProperties; j++) { */
+/* 			printf("%s\n", mat->mProperties[j]->mKey.data); */
+/* 		} */
 		sauces_register(material->name, NULL, material);
 	}
 	return material;
@@ -247,7 +332,7 @@ static void load_node(entity_t entity, const struct aiScene *scene,
 		const struct aiNode *anode, int depth)
 {
 	int inherit_type = 0;
-	c_spacial_t *spacial = c_spacial(&entity);
+	c_spatial_t *spatial = c_spatial(&entity);
 
 	const struct aiMetadata *meta = anode->mMetaData;
 	if(meta)
@@ -278,11 +363,11 @@ static void load_node(entity_t entity, const struct aiScene *scene,
 	}
 	/* if(inherit_type) */
 	/* { */
-		/* c_spacial_set_model(spacial, mat4_from_ai(anode->mParent->mTransformation)); */
+		/* c_spatial_set_model(spatial, mat4_from_ai(anode->mParent->mTransformation)); */
 	/* } */
 	/* else */
 	{
-		c_spacial_set_model(spacial, mat4_from_ai(anode->mTransformation));
+		c_spatial_set_model(spatial, mat4_from_ai(anode->mTransformation));
 	}
 	load_node_children(entity, scene, anode, depth);
 }
@@ -371,12 +456,14 @@ static int c_assimp_load(c_assimp_t *self,
 		struct load_signal *info, entity_t *target)
 {
 	int i;
-	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), info->filename);
+	printf("getting sauce %s\n", info->filename);
+	resource_handle_t handle = sauce_handle(info->filename);
+	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), &handle);
 	if(!sauce) return STOP;
 
 	const struct aiScene *scene = aiImportFile(sauce->path,
 			/* aiProcess_CalcTangentSpace  		| */
-			aiProcess_Triangulate			|
+			aiProcess_Triangulate			    |
 			/* aiProcess_GenSmoothNormals		| */
 			aiProcess_JoinIdenticalVertices 	|
 			aiProcess_SortByPType);
@@ -387,7 +474,7 @@ static int c_assimp_load(c_assimp_t *self,
 	}
 
 	int anim_only = 1;
-	if(!entity_exists(*target))
+	if(!entity_exists(*target) || (*target) == SYS)
 	{
 		anim_only = 0;
 		*target = entity_new(c_name_new(info->filename), c_node_new());
@@ -440,7 +527,7 @@ static int c_assimp_load(c_assimp_t *self,
 	}
 	if(!anim_only)
 	{
-		c_spacial_set_scale(c_spacial(target), vec3(info->scale));
+		c_spatial_set_scale(c_spatial(target), vec3(info->scale));
 	}
 
 	aiReleaseImport(scene);
@@ -452,6 +539,6 @@ REG()
 {
 	ct_t *ct = ct_new("assimp", sizeof(c_assimp_t), NULL, NULL, 0);
 
-	ct_listener(ct, WORLD | 100, sig("load"), c_assimp_load);
+	ct_listener(ct, WORLD, 100, sig("load"), c_assimp_load);
 }
 
