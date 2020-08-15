@@ -1,14 +1,14 @@
 #include "assimp.h"
-#include <components/model.h>
-#include <components/timeline.h>
-#include <components/bone.h>
-#include <components/skin.h>
-#include <components/light.h>
-#include <components/node.h>
-#include <components/name.h>
-#include <systems/sauces.h>
-#include <utils/file.h>
-#include <utils/mafs.h>
+#include "../candle/components/model.h"
+#include "../candle/components/timeline.h"
+#include "../candle/components/bone.h"
+#include "../candle/components/skin.h"
+#include "../candle/components/light.h"
+#include "../candle/components/node.h"
+#include "../candle/components/name.h"
+#include "../candle/systems/sauces.h"
+#include "../candle/utils/file.h"
+#include "../candle/utils/mafs.h"
 
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
@@ -35,7 +35,7 @@ c_assimp_t *c_assimp_new()
 	sauces_loader(ref("bin"), NULL);
 	sauces_loader(ref("gltf"), NULL);
 
-	c_assimp_t *self = component_new("assimp");
+	c_assimp_t *self = component_new(ct_assimp);
 	return self;
 }
 
@@ -206,7 +206,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 		{
 			mat4f(material, ref("absorve.color"),
 			      vec4(1.0f - color.x, 1.0f - color.y,
-			           1.0f - color.z, 1.0f - color.a));
+			           1.0f - color.z, 1.0f - color.w));
 		}
 		if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE,
 					(void*)&color))
@@ -286,10 +286,10 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 					int i;
 					for(i = 0; i < 4; i++)
 					{
-						if(vert->wei._[i] == 0.0f)
+						if(((float*)&vert->wei)[i]  == 0.0f)
 						{
-							vert->wei._[i] = vweight->mWeight;
-							vert->bid._[i] = bone_index;
+							((float*)&vert->wei)[i] = vweight->mWeight;
+							((float*)&vert->bid)[i] = bone_index;
 							break;
 						}
 					}
@@ -387,7 +387,7 @@ static void load_node_children(entity_t entity, const struct aiScene *scene,
 			load_node_children(entity, scene, cnode, depth);
 			continue;
 		}
-		entity_t n = entity_new(c_name_new(name), c_node_new());
+		entity_t n = entity_new({c_name_new(name); c_node_new();});
 		c_node_add(node, 1, n);
 		load_node(n, scene, cnode, depth + 1);
 	}
@@ -477,7 +477,7 @@ static int c_assimp_load(c_assimp_t *self,
 	if(!entity_exists(*target) || (*target) == SYS)
 	{
 		anim_only = 0;
-		*target = entity_new(c_name_new(info->filename), c_node_new());
+		*target = entity_new({c_name_new(info->filename); c_node_new();});
 	}
 	/* c_model(&result)->mesh->transformation = */
 	/* 	mat4_scale_aniso(c_model(&result)->mesh->transformation, vec3(scale)); */
@@ -515,7 +515,7 @@ static int c_assimp_load(c_assimp_t *self,
 					light->mColorDiffuse.b,
 					1.0f
 				);
-				entity_add_component(node, c_light_new(40.0f, color, 256));
+				entity_add_component(node, c_light_new(40.0f, color));
 			}
 
 			/* load_light(lc, light); */
@@ -527,7 +527,7 @@ static int c_assimp_load(c_assimp_t *self,
 	}
 	if(!anim_only)
 	{
-		c_spatial_set_scale(c_spatial(target), vec3(info->scale));
+		c_spatial_set_scale(c_spatial(target), vec3(info->scale, info->scale, info->scale));
 	}
 
 	aiReleaseImport(scene);
@@ -535,10 +535,10 @@ static int c_assimp_load(c_assimp_t *self,
     /* return HANDLED; */
 }
 
-REG()
+void ct_assimp(ct_t *self)
 {
-	ct_t *ct = ct_new("assimp", sizeof(c_assimp_t), NULL, NULL, 0);
+	ct_init(self, "assimp", sizeof(c_assimp_t));
 
-	ct_listener(ct, WORLD, 100, sig("load"), c_assimp_load);
+	ct_add_listener(self, WORLD, 100, ref("load"), c_assimp_load);
 }
 
