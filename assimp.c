@@ -458,7 +458,7 @@ static int c_assimp_load(c_assimp_t *self,
 	int i;
 	printf("getting sauce %s\n", info->filename);
 	resource_handle_t handle = sauce_handle(info->filename);
-	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), &handle);
+	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), handle);
 	if(!sauce) return STOP;
 
 	const struct aiScene *scene = aiImportFile(sauce->path,
