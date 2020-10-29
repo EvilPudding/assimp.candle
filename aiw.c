@@ -101,7 +101,7 @@ void aiw_init(void)
 	fp = fopen(lib_filename, "r");
 	if (fp == NULL)
 	{
-		char temp_name[] = "XXXXXXX";
+		char temp_name[] = "/tmp/XXXXXXX";
 		int fd = mkstemp(temp_name);
 		size_t bytes_num;
 

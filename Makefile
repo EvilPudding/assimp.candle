@@ -25,10 +25,9 @@ OBJS_REL = $(patsubst %.c, $(DIR)/%.o, $(SRCS))
 OBJS_DEB = $(patsubst %.c, $(DIR)/%.debug.o, $(SRCS))
 OBJS_EMS = $(patsubst %.c, $(DIR)/%.emscripten.o, $(SRCS))
 
-DEPS_REL = assimp.candle/build/assimp/contrib/zlib/libzlibstatic.a
+DEPS_REL = assimp.candle/build/assimp_release/contrib/zlib/libzlibstatic.a
 
 DEPS_EMS = assimp.candle/build/assimp_emscripten/lib/libassimp.a \
-assimp.candle/build/assimp_emscripten/contrib/zlib/libzlib.a \
 assimp.candle/build/assimp_emscripten/contrib/zlib/libzlibstatic.a
 
 PLUGIN_SAUCES_REL = $(DIR)/libassimp.so
@@ -43,7 +42,8 @@ CFLAGS_EMS = $(CFLAGS) -Ibuild/assimp_emscripten/include -s USE_SDL=2
 
 ##############################################################################
 
-all: init $(DIR)/assimp/bin/libassimp.so $(DIR)/libs
+all: init $(DIR)/assimp_release/bin/libassimp.so $(DIR)/libs
+	cp $(DIR)/assimp_release/bin/libassimp.so $(DIR)/
 	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
 
 $(DIR)/libs: $(DIR)/export.a
@@ -61,14 +61,14 @@ $(DIR)/assimp_emscripten/code/libassimp.a:
 	cmake -B $(DIR)/assimp_emscripten assimp $(ASSIMP_OPTS_EMS)
 	cmake --build $(DIR)/assimp_emscripten
 
-$(DIR)/assimp/bin/libassimp.so:
-	cmake -B $(DIR)/assimp assimp $(ASSIMP_OPTS)
-	cmake --build $(DIR)/assimp
-	cp $(DIR)/assimp/bin/libassimp.so $(DIR)/
+$(DIR)/assimp_release/bin/libassimp.so:
+	cmake -B $(DIR)/assimp_release assimp $(ASSIMP_OPTS)
+	cmake --build $(DIR)/assimp_release
 
 ##############################################################################
 
-debug: init $(DIR)/assimp/bin/libassimp.so $(DIR)/libs_debug
+debug: init $(DIR)/assimp_release/bin/libassimp.so $(DIR)/libs_debug
+	cp $(DIR)/assimp_release/bin/libassimp.so $(DIR)/
 	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
 
 $(DIR)/libs_debug: $(DIR)/export_debug.a
@@ -107,7 +107,7 @@ init:
 ##############################################################################
 
 clean:
-	-rm -r $(DIR)
+	-cd $(DIR) && ls | grep -v assimp_release | xargs rm -r
 
 # vim:ft=make
 #
