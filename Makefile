@@ -10,6 +10,8 @@ ASSIMP_OPTS := $(ASSIMP_OPTS) -DASSIMP_BUILD_ASSIMP_TOOLS=OFF
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_C_FLAGS=-Wno-implicit-function-declaration
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_CXX_FLAGS=-Wno-implicit-function-declaration
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_BUILD_TYPE=Release
+ASSIMP_OPTS := $(ASSIMP_OPTS) -DASSIMP_BUILD_ZLIB=ON
+ASSIMP_OPTS := $(ASSIMP_OPTS) -DASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT=OFF -DASSIMP_BUILD_FBX_IMPORTER=ON
 
 ASSIMP_OPTS_EMS  = $(ASSIMP_OPTS) -DBUILD_SHARED_LIBS=OFF
 ASSIMP_OPTS_EMS := $(ASSIMP_OPTS_EMS) -DCMAKE_TOOLCHAIN_FILE="$(EMS_TOOLCHAIN)"
@@ -17,17 +19,19 @@ ASSIMP_OPTS_EMS := $(ASSIMP_OPTS_EMS) -DCMAKE_MODULE_PATH="$(EMS_MODULE)"
 
 DIR = build
 
-SRCS = assimp.c
+SRCS = assimp.c aiw.c
 
 OBJS_REL = $(patsubst %.c, $(DIR)/%.o, $(SRCS))
 OBJS_DEB = $(patsubst %.c, $(DIR)/%.debug.o, $(SRCS))
 OBJS_EMS = $(patsubst %.c, $(DIR)/%.emscripten.o, $(SRCS))
 
-DEPS_REL = assimp.candle/build/assimp/code/libassimp.so
-DEPS_EMS = assimp.candle/build/assimp_emscripten/code/libassimp.a \
+DEPS_REL = assimp.candle/build/assimp/contrib/zlib/libzlibstatic.a
+
+DEPS_EMS = assimp.candle/build/assimp_emscripten/lib/libassimp.a \
 assimp.candle/build/assimp_emscripten/contrib/zlib/libzlib.a \
-assimp.candle/build/assimp_emscripten/contrib/zlib/libzlibstatic.a \
-assimp.candle/build/assimp_emscripten/contrib/irrXML/libIrrXML.a
+assimp.candle/build/assimp_emscripten/contrib/zlib/libzlibstatic.a
+
+PLUGIN_SAUCES_REL = $(DIR)/libassimp.so
 
 CFLAGS = -Iassimp/include -Wuninitialized $(PARENTCFLAGS)
 
@@ -39,7 +43,8 @@ CFLAGS_EMS = $(CFLAGS) -Ibuild/assimp_emscripten/include -s USE_SDL=2
 
 ##############################################################################
 
-all: init $(DIR)/assimp/code/libassimp.so $(DIR)/libs
+all: init $(DIR)/assimp/bin/libassimp.so $(DIR)/libs
+	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
 
 $(DIR)/libs: $(DIR)/export.a
 	echo assimp.candle/$< $(DEPS_REL) > $@
@@ -56,16 +61,18 @@ $(DIR)/assimp_emscripten/code/libassimp.a:
 	cmake -B $(DIR)/assimp_emscripten assimp $(ASSIMP_OPTS_EMS)
 	cmake --build $(DIR)/assimp_emscripten
 
-$(DIR)/assimp/code/libassimp.so:
+$(DIR)/assimp/bin/libassimp.so:
 	cmake -B $(DIR)/assimp assimp $(ASSIMP_OPTS)
 	cmake --build $(DIR)/assimp
+	cp $(DIR)/assimp/bin/libassimp.so $(DIR)/
 
 ##############################################################################
 
-debug: init $(DIR)/libs_debug 
+debug: init $(DIR)/assimp/bin/libassimp.so $(DIR)/libs_debug
+	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
 
 $(DIR)/libs_debug: $(DIR)/export_debug.a
-	echo $(DEPS_REL) assimp.candle/$< > $@
+	echo assimp.candle/$< $(DEPS_REL) > $@
 
 $(DIR)/export_debug.a: $(OBJS_DEB)
 	$(AR) rs $@ $(OBJS_DEB)
@@ -76,9 +83,10 @@ $(DIR)/%.debug.o: %.c
 ##############################################################################
 
 emscripten: init $(DIR)/assimp_emscripten/code/libassimp.a $(DIR)/libs_emscripten
+	echo "" > $(DIR)/res
 
 $(DIR)/libs_emscripten: $(DIR)/export_emscripten.a
-	echo $(DEPS_EMS) assimp.candle/$< > $@
+	echo assimp.candle/$< $(DEPS_EMS) > $@
 
 $(DIR)/export_emscripten.a: $(OBJS_EMS)
 	emar rs $@ $(OBJS_EMS)
@@ -90,6 +98,11 @@ $(DIR)/%.emscripten.o: %.c
 
 init:
 	mkdir -p $(DIR)
+	rm -f $(DIR)/res
+	rm -f $(DIR)/libs
+	rm -f $(DIR)/res
+	rm -f $(DIR)/libs_debug
+	rm -f $(DIR)/libs_emscripten
 
 ##############################################################################
 
@@ -99,4 +112,3 @@ clean:
 # vim:ft=make
 #
 
-.PHONY: $(DIR)/assimp_emscripten/code/libassimp.a

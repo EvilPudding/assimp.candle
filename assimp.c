@@ -10,10 +10,7 @@
 #include "../candle/utils/file.h"
 #include "../candle/utils/mafs.h"
 
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/metadata.h>
-#include <assimp/postprocess.h>
+#include "aiw.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +31,7 @@ c_assimp_t *c_assimp_new()
 	sauces_loader(ref("dae"), NULL);
 	sauces_loader(ref("bin"), NULL);
 	sauces_loader(ref("gltf"), NULL);
+	aiw_init();
 
 	c_assimp_t *self = component_new(ct_assimp);
 	return self;
@@ -126,7 +124,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 	struct aiString name;
 
 	struct aiString path;
-	if(aiGetMaterialString(mat, AI_MATKEY_NAME, &name) ==
+	if(aiwGetMaterialString(mat, AI_MATKEY_NAME, &name) ==
 			aiReturn_SUCCESS)
 	{
 		strncpy(buffer, name.data, sizeof(buffer));
@@ -145,7 +143,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 		enum aiTextureMapMode mode;
 		unsigned int flags;
 
-		if(aiGetMaterialTexture( mat, aiTextureType_NORMALS, 0, &path,
+		if(aiwGetMaterialTexture( mat, aiTextureType_NORMALS, 0, &path,
 					&mapping, &uvi, &blend, &op, &mode, &flags) ==
 				aiReturn_SUCCESS)
 		{
@@ -158,7 +156,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 				mat1f(material, ref("normal.blend"), 1.0f - blend);
 			}
 		}
-		if(aiGetMaterialTexture( mat, aiTextureType_DIFFUSE, 0, &path,
+		if(aiwGetMaterialTexture( mat, aiTextureType_DIFFUSE, 0, &path,
 					&mapping, &uvi, &blend, &op, &mode, &flags) ==
 				aiReturn_SUCCESS)
 		{
@@ -172,7 +170,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			}
 		}
 
-		if(aiGetMaterialTexture( mat, aiTextureType_AMBIENT, 0, &path,
+		if(aiwGetMaterialTexture( mat, aiTextureType_AMBIENT, 0, &path,
 					&mapping, &uvi, &blend, &op, &mode, &flags) ==
 				aiReturn_SUCCESS)
 		{
@@ -186,7 +184,7 @@ static mat_t *load_material(const struct aiMaterial *mat,
 			}
 		}
 
-		if(aiGetMaterialTexture( mat, aiTextureType_SHININESS, 0, &path,
+		if(aiwGetMaterialTexture( mat, aiTextureType_SHININESS, 0, &path,
 					&mapping, &uvi, &blend, &op, &mode, &flags) ==
 				aiReturn_SUCCESS)
 		{
@@ -201,14 +199,14 @@ static mat_t *load_material(const struct aiMaterial *mat,
 		}
 
 		vec4_t color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_TRANSPARENT,
+		if (AI_SUCCESS == aiwGetMaterialColor(mat, AI_MATKEY_COLOR_TRANSPARENT,
 					(void*)&color))
 		{
 			mat4f(material, ref("absorve.color"),
 			      vec4(1.0f - color.x, 1.0f - color.y,
 			           1.0f - color.z, 1.0f - color.w));
 		}
-		if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE,
+		if (AI_SUCCESS == aiwGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE,
 					(void*)&color))
 		{
 			mat4f(material, ref("albedo.color"), color);
@@ -461,7 +459,7 @@ static int c_assimp_load(c_assimp_t *self,
 	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), handle);
 	if(!sauce) return STOP;
 
-	const struct aiScene *scene = aiImportFile(sauce->path,
+	const struct aiScene *scene = aiwImportFile(sauce->path,
 			/* aiProcess_CalcTangentSpace  		| */
 			aiProcess_Triangulate			    |
 			/* aiProcess_GenSmoothNormals		| */
@@ -530,7 +528,7 @@ static int c_assimp_load(c_assimp_t *self,
 		c_spatial_set_scale(c_spatial(target), vec3(info->scale, info->scale, info->scale));
 	}
 
-	aiReleaseImport(scene);
+	aiwReleaseImport(scene);
     return STOP;
     /* return HANDLED; */
 }
