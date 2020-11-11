@@ -46,6 +46,12 @@ const C_STRUCT aiScene* (*aiwImportFile)(
         const char *pFile,
         unsigned int pFlags);
 
+const C_STRUCT aiScene* (*aiwImportFileFromMemory)(
+        const char *pBuffer,
+        unsigned int pLength,
+        unsigned int pFlags,
+        const char *pHint);
+
 void (*aiwReleaseImport)(
         const C_STRUCT aiScene *pScene);
 
@@ -60,7 +66,7 @@ void aiw_init(void)
 #define aisym(v, type, l, s) v = (type)s
 #define aiclose(l)
 #else
-#define ailib(l) dlopen(l, RTLD_NODELETE)
+#define ailib(l) dlopen(l, RTLD_LAZY)
 #define aisym(v, type, l, s) v = (type)dlsym(l, #s)
 #define aiclose(l)
 #endif
@@ -113,11 +119,17 @@ void aiw_init(void)
 			printf("Failed to write to ai shared library temp file.\n");
 			exit(1);
 		}
+		strcpy(lib_filename, temp_name);
 		close(fd);
 	}
 	ailib = ailib(lib_filename);
+
+	if (!ailib) {
+		puts(dlerror());
+		exit(1);
+	}
 #else
-	void *ailib;
+	void *ailib = NULL;
 #endif
 
 	aisym(aiwGetMaterialString, C_ENUM aiReturn (*)(const C_STRUCT aiMaterial* pMat,
@@ -156,7 +168,12 @@ void aiw_init(void)
 		aiGetMaterialTexture);
 
 	aisym(aiwImportFile, const C_STRUCT aiScene* (*)(const char *pFile,
-			unsigned int pFlags), ailib, aiwImportFile);
+			unsigned int pFlags), ailib, aiImportFile);
+
+	aisym(aiwImportFileFromMemory, const C_STRUCT aiScene* (*)(const char *pBuffer,
+				unsigned int pLength,
+				unsigned int pFlags,
+				const char *pHint), ailib, aiImportFileFromMemory);
 
 	aisym(aiwReleaseImport, void (*)(const C_STRUCT aiScene *pScene), ailib, aiReleaseImport);
 	aiclose(ailib);

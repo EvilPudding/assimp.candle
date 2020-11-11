@@ -458,13 +458,15 @@ static int c_assimp_load(c_assimp_t *self,
 	resource_handle_t handle = sauce_handle(info->filename);
 	resource_t *sauce = c_sauces_get_sauce(c_sauces(&SYS), handle);
 	if(!sauce) return STOP;
+	size_t bytes_num = 0;
+	char *bytes = c_sauces_get_bytes(c_sauces(&SYS), sauce, &bytes_num);
 
-	const struct aiScene *scene = aiwImportFile(sauce->path,
+	const struct aiScene *scene = aiwImportFileFromMemory(bytes, bytes_num,
 			/* aiProcess_CalcTangentSpace  		| */
 			aiProcess_Triangulate			    |
 			/* aiProcess_GenSmoothNormals		| */
 			aiProcess_JoinIdenticalVertices 	|
-			aiProcess_SortByPType);
+			aiProcess_SortByPType, strrchr(sauce->path, '.') + 1);
 	if(!scene)
 	{
 		printf("failed to load %s\n", info->filename);

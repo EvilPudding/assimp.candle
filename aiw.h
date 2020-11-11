@@ -46,4 +46,10 @@ extern const C_STRUCT aiScene* (*aiwImportFile)(const char *pFile,
 
 extern void (*aiwReleaseImport)(const C_STRUCT aiScene *pScene);
 
+extern const C_STRUCT aiScene* (*aiwImportFileFromMemory)(const char *pBuffer,
+        unsigned int pLength,
+        unsigned int pFlags,
+        const char *pHint);
+
+
 #endif /* !AIW_H */
