@@ -21,12 +21,6 @@ C_ENUM aiReturn (*aiwGetMaterialColor)(const C_STRUCT aiMaterial* pMat,
     unsigned int index,
     C_STRUCT aiColor4D* pOut);
 
-C_ENUM aiReturn (*aiwGetMaterialString)(const C_STRUCT aiMaterial* pMat,
-    const char* pKey,
-    unsigned int type,
-    unsigned int index,
-    C_STRUCT aiString* pOut);
-
 unsigned int (*aiwGetMaterialTextureCount)(const C_STRUCT aiMaterial* pMat,
                                            C_ENUM aiTextureType type);
 
@@ -66,7 +60,7 @@ void aiw_init(void)
 #define aisym(v, type, l, s) v = (type)s
 #define aiclose(l)
 #else
-#define ailib(l) dlopen(l, RTLD_LAZY)
+#define ailib(l) dlopen(l, RTLD_NOW)
 #define aisym(v, type, l, s) v = (type)dlsym(l, #s)
 #define aiclose(l)
 #endif
@@ -143,13 +137,7 @@ void aiw_init(void)
 				const char* pKey,
 				unsigned int type,
 				unsigned int index,
-				C_STRUCT aiColor4D* pOut), ailib, aiwGetMaterialColor);
-
-	aisym(aiwGetMaterialString, C_ENUM aiReturn (*)(const C_STRUCT aiMaterial* pMat,
-				const char* pKey,
-				unsigned int type,
-				unsigned int index,
-				C_STRUCT aiString* pOut), ailib, aiwGetMaterialString);
+				C_STRUCT aiColor4D* pOut), ailib, aiGetMaterialColor);
 
 	aisym(aiwGetMaterialTextureCount, unsigned int (*)(const C_STRUCT aiMaterial* pMat,
 			C_ENUM aiTextureType type), ailib, aiGetMaterialTextureCount);

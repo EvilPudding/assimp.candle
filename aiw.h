@@ -20,12 +20,6 @@ extern C_ENUM aiReturn (*aiwGetMaterialColor)(const C_STRUCT aiMaterial* pMat,
                                               unsigned int index,
                                               C_STRUCT aiColor4D* pOut);
 
-extern C_ENUM aiReturn (*aiwGetMaterialString)(const C_STRUCT aiMaterial* pMat,
-                                               const char* pKey,
-                                               unsigned int type,
-                                               unsigned int index,
-                                               C_STRUCT aiString* pOut);
-
 extern unsigned int (*aiwGetMaterialTextureCount)(const C_STRUCT aiMaterial* pMat,
                                                   C_ENUM aiTextureType type);
 
