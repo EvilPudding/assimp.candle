@@ -248,8 +248,8 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 	{
 		const struct aiMesh *mesh = scene->mMeshes[anode->mMeshes[m]];
 
+		mesh_lock(mc->mesh);
 		mesh_load_scene(mc->mesh, mesh);
-
 		if(mesh->mNumBones)
 		{
 			int b;
@@ -265,14 +265,20 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 				int w;
 				const struct aiBone* abone = mesh->mBones[b];
 				entity_t bone = c_node_get_by_name(root, ref(abone->mName.data));
-				if(!bone || c_bone(&bone)) continue;
+
+				if (!bone || abone->mNumWeights == 0)
+					continue;
+
 				int bone_index = skin->info.bones_num;
 
 				skin->info.bones[bone_index] = bone;
 				skin->info.bones_num++;
 
-				entity_add_component(bone, c_bone_new(entity,
-							mat4_from_ai(abone->mOffsetMatrix)));
+				if (!c_bone(&bone))
+				{
+					entity_add_component(bone, c_bone_new(entity,
+								mat4_from_ai(abone->mOffsetMatrix)));
+				}
 
 				for(w = 0; w < abone->mNumWeights; w++)
 				{
@@ -292,10 +298,12 @@ void load_comp(entity_t entity, const struct aiScene *scene,
 						}
 					}
 					if(i == 4) printf("TOO MANY WEIGHTS\n");
+					mesh_modified(mc->mesh);
 				}
 			}
 		}
 		last_vertex += mesh->mNumVertices;
+		mesh_unlock(mc->mesh);
 
 		if(mesh->mMaterialIndex >= scene->mNumMaterials) continue;
 		const struct aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
