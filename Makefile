@@ -7,8 +7,6 @@ EMS_MODULE = $(EMSDK)/emscripten/master/cmake/Modules
 
 ASSIMP_OPTS  = -DASSIMP_NO_EXPORT=ON -DASSIMP_BUILD_TESTS=OFF
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DASSIMP_BUILD_ASSIMP_TOOLS=OFF
-ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_C_FLAGS=-Wno-implicit-function-declaration
-ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_CXX_FLAGS=-Wno-implicit-function-declaration
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DCMAKE_BUILD_TYPE=Release
 ASSIMP_OPTS := $(ASSIMP_OPTS) -DASSIMP_BUILD_ZLIB=ON
 
@@ -33,17 +31,16 @@ PLUGIN_SAUCES_REL = $(DIR)/libassimp.so
 
 CFLAGS = -Iassimp/include -Wuninitialized $(PARENTCFLAGS)
 
-CFLAGS_REL = $(CFLAGS) -Ibuild/assimp/include -O3
+CFLAGS_REL = $(CFLAGS) -I$(DIR)/assimp_release/include -O3
 
-CFLAGS_DEB = $(CFLAGS) -Ibuild/assimp/include -g3
+CFLAGS_DEB = $(CFLAGS) -I$(DIR)/assimp_release/include -g3
 
-CFLAGS_EMS = $(CFLAGS) -Ibuild/assimp_emscripten/include -s USE_SDL=2
+CFLAGS_EMS = $(CFLAGS) -I$(DIR)/assimp_emscripten/include
 
 ##############################################################################
 
 all: init $(DIR)/assimp_release/bin/libassimp.so $(DIR)/libs
-	cp $(DIR)/assimp_release/bin/libassimp.so $(DIR)/
-	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
+	echo $(DIR)/assimp_release/bin/libassimp.so > $(DIR)/res
 
 $(DIR)/libs: $(DIR)/export.a
 	echo assimp.candle/$< $(DEPS_REL) > $@
@@ -67,8 +64,7 @@ $(DIR)/assimp_release/bin/libassimp.so:
 ##############################################################################
 
 debug: init $(DIR)/assimp_release/bin/libassimp.so $(DIR)/libs_debug
-	cp $(DIR)/assimp_release/bin/libassimp.so $(DIR)/
-	echo $(PLUGIN_SAUCES_REL) > $(DIR)/res
+	echo $(DIR)/assimp_release/bin/libassimp.so > $(DIR)/res
 
 $(DIR)/libs_debug: $(DIR)/export_debug.a
 	echo assimp.candle/$< $(DEPS_REL) > $@
